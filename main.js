@@ -80,7 +80,7 @@ class App{
 		// model.add(helperRoot);
 		// THREE_VRM.VRMUtils.rotateVRM0( vrm );
 		if (vrm.meta?.metaVersion === '0')//this is neccessary since old VRM spec is different
-			vrm.humanoid.getRawBoneNode("hips").rotation.y = Math.PI;
+			vrm.humanoid.getNormalizedBoneNode("hips").rotation.y = Math.PI;
 
 		// prepare retargeter
 		const retargeter = new Retargeter();

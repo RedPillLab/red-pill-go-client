@@ -72,8 +72,11 @@ export class Parser{
 		const bits = new BitsConsumer(buf.slice(8));
 		const num_joints = model_id==98969896 ? 22 : model_id;
 		const rotations = [];
-		for(let i=0; i<num_joints; i++)
+		for(let i=0; i<num_joints; i++){
 			rotations.push(Parser.DeserializeQ(bits));
+			if(i==3 || i==6)
+				rotations[i].multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-25*0.0174533,0,0)));
+		}
 		return rotations;
 	}
 
