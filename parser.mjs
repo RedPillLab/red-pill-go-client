@@ -1,6 +1,3 @@
-
-import * as THREE from 'three';
-
 class BitsConsumer{
 	constructor(buf){
 		this.buf = new Uint8Array(buf);
@@ -29,17 +26,13 @@ export class Parser{
 		()=>{},
 		Parser.parseRotationFrame,
 		Parser.parseTranslationFrame,
-		Parser.parseMorphFrame,
-		Parser.parseCalibFrame,
-		Parser.parseMicFrame
+		Parser.parseMorphFrame
 	];
 	static typeTable = [
 		undefined,
 		"rotations",
 		"translations",
 		"morph",
-		"calib",
-		"mic"
 	];
 	static parse(buf){
 		const id = new Uint8Array(buf)[0];
@@ -54,37 +47,31 @@ export class Parser{
 		const r = Math.sqrt(Math.abs(1.0 - (Math.pow(x, 2) + Math.pow(y, 2) + Math.pow(z, 2))));
 		switch(id){
 			case 0:
-				return new THREE.Quaternion(x, y, z, r);
+				return [x, y, z, r];
 			case 1:
-				return new THREE.Quaternion(r, y, z, x);
+				return [r, y, z, x];
 			case 2:
-				return new THREE.Quaternion(y, r, z, x);
+				return [y, r, z, x];
 			case 3:
-				return new THREE.Quaternion(y, z, r, x);
+				return [y, z, r, x];
 			default:
-				return new THREE.Quaternion();
+				return [];
 		}
 	}
 
 	static parseRotationFrame(buf)
 	{
-		const model_id = new BigUint64Array(buf.slice(0, 8))[0];/* eslint-disable-line */
+		const num_joints = new BigUint64Array(buf.slice(0, 8))[0];/* eslint-disable-line */
 		const bits = new BitsConsumer(buf.slice(8));
-		const num_joints = model_id==98969896 ? 22 : model_id;
 		const rotations = [];
-		for(let i=0; i<num_joints; i++){
+		for(let i=0; i<num_joints; i++)
 			rotations.push(Parser.DeserializeQ(bits));
-			if(i==3 || i==6)
-				rotations[i].multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(-25*0.0174533,0,0)));
-		}
 		return rotations;
 	}
 
 	static parseTranslationFrame(buf)
 	{
-		// const model_id = new BigUint64Array(buf.slice(0, 8))[0];
-		// const num_joints = model_id==98969896 ? 22 : model_id;
-		const root = new THREE.Vector3(...(new Float32Array(buf.slice(8, 20))));
+		const root = [...(new Float32Array(buf.slice(8, 20)))];
 		const lens = [...(new Uint16Array(buf.slice(20)))].map(e=>e/65535.0);
 		return [root, lens];
 	}
@@ -92,20 +79,5 @@ export class Parser{
 	static parseMorphFrame(buf)
 	{
 		return [...new Uint8Array(buf)].map((e)=>{return e/255.0;});
-	}
-
-	static parseCalibFrame(buf)
-	{
-		const model_id = new BigUint64Array(buf.slice(0, 8))[0];/* eslint-disable-line */
-		if(model_id==98969896){
-			const arr = new Float32Array(buf.slice(8));
-			const [h, w] = [arr[0]*100, arr[1]*100];
-			return [h, w];
-		}
-	}
-	
-	static parseMicFrame(buf)
-	{
-		return new Uint8Array(buf[0]);
 	}
 }

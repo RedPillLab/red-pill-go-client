@@ -3,9 +3,9 @@
 <head>
 	<link rel="shortcut icon" href="#">
 </head>
-<body style="margin: 0">	
+<body style="margin: 0; overflow: hidden">	
 	<div id="container">
-		<canvas id="three"></canvas>
+		<canvas id="canvas"></canvas>
 	</div>
 
 	<!-- polyfill for importmap -->
@@ -13,9 +13,11 @@
 	<script type="importmap">
 		{
 			"imports": {
-				"three": "https://unpkg.com/three@0.145.0/build/three.module.js",
-				"three/": "https://unpkg.com/three@0.145.0/",
-				"three-vrm": "https://unpkg.com/@pixiv/three-vrm@1.0.3/lib/three-vrm.module.js"
+				"three": "https://unpkg.com/three@0.149.0/build/three.module.js",
+				"three/": "https://unpkg.com/three@0.149.0/",
+				"@pixiv/three-vrm": "https://unpkg.com/@pixiv/three-vrm@1.0.8/lib/three-vrm.module.js",
+				"playcanvas": "https://unpkg.com/playcanvas@1.61.0/build/playcanvas.min.js",
+				"playcanvas/": "https://unpkg.com/playcanvas@1.61.0/"
 			}
 		}
 	</script>

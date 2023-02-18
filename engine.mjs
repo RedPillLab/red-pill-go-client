@@ -1,94 +1,100 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-
-export class Engine{
+import "playcanvas";
+export class Engine
+{
 	constructor(canvas){
 		this.canvas = canvas;
-		this.initRenderer();
-		this.initUIScene();
-		this.initScene();
-		this.initCamera();
-		this.initFloor();
 		window.addEventListener( "resize", ()=>{this.onWindowResize();}, false );
-		this.clock = new THREE.Clock();
-		this.scripts = {};
+		this.onWindowResize();
+		this.app = new pc.Application(canvas, {
+			mouse: new pc.Mouse(canvas),
+			touch: new pc.TouchDevice(canvas)
+		});
+		this.initFloor();
+		this.initLight();
+		this.initCamera();
+		this.app.start();
 	}
 
-	initRenderer(){
-		this.renderer = new THREE.WebGLRenderer( { canvas: this.canvas, antialias: true} );
-		this.renderer.setSize( window.innerWidth, window.innerHeight, false);
-		this.renderer.setPixelRatio( 1 );
-		this.renderer.setAnimationLoop(this.update.bind(this));
+	initFloor(){
+		const floor = new pc.Entity("floor");
+		floor.setLocalScale(8, 1, 8);
+		floor.addComponent("render", {type: "plane",});
+
+		const material = new pc.Material();
+		material.setShader(new pc.Shader(this.app.graphicsDevice, {
+			attributes: {
+				aPosition: pc.SEMANTIC_POSITION,
+				texcoord: pc.SEMANTIC_TEXCOORD0
+			},
+			vshader: `
+				attribute vec3 aPosition;
+				attribute vec2 texcoord;
+				
+				uniform mat4 matrix_model;
+				uniform mat4 matrix_viewProjection;
+				
+				varying vec2 otexcoord;
+				
+				void main(void)
+				{
+					otexcoord = texcoord;
+					gl_Position = matrix_viewProjection * matrix_model * vec4(aPosition, 1.0);
+				}
+			`,
+			fshader: `
+				precision highp float;
+				varying vec2 otexcoord;
+
+				float checker(vec2 uv, float repeats) 
+				{
+					float cx = floor(repeats * uv.x);
+					float cy = floor(repeats * uv.y); 
+					float result = mod(cx + cy, 2.0);
+					return sign(result);
+				}
+
+				void main(void)
+				{
+					float c = mix(1.0, 0.0, checker(otexcoord.xy, 8.0));
+					gl_FragColor = vec4(c, c, c, 1.0); 
+				}
+			`
+		}));
+		floor.render.material = material;
+		this.app.root.addChild(floor);
 	}
 
-	initUIScene(){
-		//  a separate scene for UI, e.g. floor, axis, ...
-		this.ui_scene = new THREE.Scene();
+	initLight(){
+		// create directional light entity
+		const light = new pc.Entity("light");
+		light.addComponent("light");
+		light.setEulerAngles(45, 0, 0);
+		this.app.root.addChild(light);
 	}
-
-    initFloor() {
-        const grid = new THREE.Group();
-
-        const grid1 = new THREE.GridHelper( 30, 30 );
-        grid1.material.color.setHex( 0x666666 );
-        grid1.material.vertexColors = false;
-        grid.add( grid1 );
-
-        const grid2 = new THREE.GridHelper( 30, 6 );
-        grid2.material.color.setHex( 0xc1c1c1 );
-        grid2.material.depthFunc = THREE.AlwaysDepth;
-        grid2.material.vertexColors = false;
-        grid.add( grid2 );
-
-        this.ui_scene.add( grid );
-    }
-
-	initScene(){
-		// default scene with light
-		this.scene = new THREE.Scene();
-		let light = new THREE.DirectionalLight( 0xffffff);
-		light.position.set( -1, 1, 10 );
-		this.scene.add( light );
-	}
-
 	initCamera(){
-		// camera is independent from the scene
-		this.camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 0.1, 1000 );
-		this.controls = new OrbitControls( this.camera, this.canvas );
-		this.camera.position.set(0, 5, 5);
+		// create camera entity
+		const camera = new pc.Entity("camera");
+		camera.addComponent("camera", {clearColor: new pc.Color().fromString("#111111")});
+
+		import("playcanvas/scripts/camera/orbit-camera.js").then(()=>{
+			camera.addComponent("script");
+			const orbitCamera = camera.script.create("orbitCamera");
+			orbitCamera.distance = 5;
+			orbitCamera.pitch = -25;
+			orbitCamera.pivotPoint = new pc.Vec3(0, 1, 0);
+			camera.script.create("orbitCameraInputMouse");
+			camera.script.create("orbitCameraInputTouch");
+		});
+
+		this.app.root.addChild(camera);
 	}
 
-	onWindowResize() {
-		this.camera.aspect = window.innerWidth / window.innerHeight;
-		this.camera.updateProjectionMatrix();
-		this.renderer.setSize( window.innerWidth, window.innerHeight, false );
+	onWindowResize(){
+		this.canvas.width = window.innerWidth;
+		this.canvas.height = window.innerHeight;
 	}
 
-	update(time){
-		const delta = this.clock.getDelta();
-		for(const key in this.scripts)
-			for(const script of this.scripts[key])
-				script(delta);
-		
-		if(this.ui_scene.visible){
-			this.renderer.render( this.ui_scene, this.camera );
-			this.renderer.autoClear = false;
-			this.renderer.render( this.scene, this.camera );
-			this.renderer.autoClear = true;
-		}
-		else
-			this.renderer.render( this.scene, this.camera );
-
-        this.controls.update();
-	}
-
-	addObject(object){
-		this.scene.add(object);
-	}
-
-	addScript(object, script){
-		if(this.scripts[object.uuid]===undefined)
-			this.scripts[object.uuid] = [];
-		this.scripts[object.uuid].push(script);
+	addObject(entity){
+		this.app.root.addChild(entity);
 	}
 }
